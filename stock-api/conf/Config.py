@@ -1,18 +1,20 @@
+import os
+
 # 数据库配置
 DB_CONFIG = {
-    'host': '192.168.3.3',
-    'port': 5433,
-    'database': 'stock',
-    'user': 'postgres',
-    'password': 'postgres'
+    'host': os.environ.get('DB_HOST', '192.168.3.3'),
+    'port': int(os.environ.get('DB_PORT', '5433')),
+    'database': os.environ.get('DB_NAME', 'stock'),
+    'user': os.environ.get('DB_USER', 'postgres'),
+    'password': os.environ.get('DB_PASSWORD', 'postgres')
 }
 
 # Redis 配置
 REDIS_CONFIG = {
-    'host': '192.168.3.3',
-    'port': 6379,
-    'db': 0,
-    'password': None,
+    'host': os.environ.get('REDIS_HOST', '192.168.3.3'),
+    'port': int(os.environ.get('REDIS_PORT', '6379')),
+    'db': int(os.environ.get('REDIS_DB', '0')),
+    'password': os.environ.get('REDIS_PASSWORD', None),
     'decode_responses': True,
     'socket_timeout': 5,
     'socket_connect_timeout': 5
