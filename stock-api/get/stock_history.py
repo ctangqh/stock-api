@@ -1,7 +1,5 @@
 import logging
 import datetime
-import time
-import akshare as ak
 import pandas as pd
 from typing import Optional, Dict, List
 
@@ -20,7 +18,7 @@ logger = logging.getLogger(__name__)
 class StockHistoryDataFetcher:
     """
     股票历史行情数据获取类
-    功能：从 akshare 获取数据，缓存到 Redis，同步到数据库
+    功能：从数据库 stock_cn_history_market 表读取数据，缓存到 Redis
     """
 
     def __init__(self, db_config: Dict, redis_config: Dict):
@@ -74,11 +72,16 @@ class StockHistoryDataFetcher:
             logger.info(f"从 Redis 缓存获取数据: {cache_key}")
             return pd.DataFrame(cached_data)
         
-        # 缓存不存在，从 akshare 获取
+        # 缓存不存在，从数据库获取
         try:
-            logger.info(f"从 akshare 获取股票历史行情: {symbol}")
-            time.sleep(0.1)  # 避免触发反爬虫
-            df = ak.stock_zh_a_hist(symbol=symbol, period="daily", adjust="qfq")
+            logger.info(f"从数据库获取股票历史行情: {symbol}")
+            data_list = self.orm.get_latest_by_code(symbol, days)
+            
+            if not data_list:
+                logger.warning(f"数据库中未找到股票 {symbol} 的历史行情数据")
+                return None
+            
+            df = pd.DataFrame(data_list)
             
             # 缓存数据到 Redis，24小时过期
             self.redis.set(cache_key, df.to_dict('records'), ex=86400)
@@ -91,64 +94,17 @@ class StockHistoryDataFetcher:
 
     def sync_to_database(self, df: pd.DataFrame, ts_code: Optional[str] = None) -> int:
         """
-        将 DataFrame 同步到数据库
+        将 DataFrame 同步到数据库（保留方法兼容性，实际不再需要从 akshare 同步）
         
         参数:
         df -- 历史行情 DataFrame
-        ts_code -- 股票代码，可选（从 df 提取或传入）
+        ts_code -- 股票代码，可选
         
         返回:
-        int -- 成功插入的记录数
+        int -- 成功插入的记录数，当前始终返回 0
         """
-        if df.empty:
-            logger.warning("DataFrame 为空，跳过同步")
-            return 0
-        
-        # 准备数据列表
-        data_list = df.to_dict('records')
-        
-        # 映射 akshare 返回的列名到数据库字段
-        column_mapping = {
-            '日期': 'trade_date',
-            '开盘': 'open',
-            '最高': 'high',
-            '最低': 'low',
-            '收盘': 'close',
-            '成交量': 'volume',
-            '成交额': 'amount',
-            '换手率': 'turnover',
-            '振幅': 'amplitude',
-            '涨跌幅': 'change_rate',
-            '涨跌额': 'change_amount'
-        }
-        
-        # 重命名列并添加股票代码
-        processed_list = []
-        for item in data_list:
-            new_item = {}
-            for old_col, new_col in column_mapping.items():
-                if old_col in item:
-                    new_item[new_col] = item[old_col]
-            
-            # 处理日期格式
-            if 'trade_date' in new_item:
-                if isinstance(new_item['trade_date'], str):
-                    new_item['trade_date'] = datetime.datetime.strptime(new_item['trade_date'], '%Y-%m-%d').date()
-            
-            # 添加股票代码
-            if ts_code:
-                new_item['code'] = ts_code
-            elif '股票代码' in item:
-                new_item['code'] = item['股票代码']
-            
-            processed_list.append(new_item)
-        
-        # 批量插入到数据库
-        result_ids = self.orm.batch_insert(processed_list)
-        success_count = len([rid for rid in result_ids if rid is not None])
-        
-        logger.info(f"同步到数据库完成，成功: {success_count} 条")
-        return success_count
+        logger.warning("sync_to_database 方法已废弃，数据现在直接从数据库读取")
+        return 0
 
 
 if __name__ == "__main__":
