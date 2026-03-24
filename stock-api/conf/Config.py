@@ -158,3 +158,30 @@ FIELDS_FUNDS_FLOW_MAP = {
     "f256": "今日融资融券净差额(亿元)" 
 }
 
+# 技术指标配置
+def _parse_list_env(env_value, default):
+    """解析逗号分隔的环境变量为列表"""
+    value = os.environ.get(env_value)
+    if value:
+        return [int(x.strip()) for x in value.split(',') if x.strip()]
+    return default
+
+TECHNICAL_CONFIG = {
+    # MACD 指标参数
+    'MACD_FAST': int(os.environ.get('MACD_FAST', '12')),
+    'MACD_SLOW': int(os.environ.get('MACD_SLOW', '26')),
+    'MACD_SIGNAL': int(os.environ.get('MACD_SIGNAL', '9')),
+    # 均线周期
+    'MA_PERIODS': _parse_list_env('MA_PERIODS', [5, 10, 20, 60]),
+    # 金叉死叉均线参数
+    'GOLDEN_CROSS_MA_SHORT': int(os.environ.get('GOLDEN_CROSS_MA_SHORT', '5')),
+    'GOLDEN_CROSS_MA_LONG': int(os.environ.get('GOLDEN_CROSS_MA_LONG', '20')),
+    'DEATH_CROSS_MA_SHORT': int(os.environ.get('DEATH_CROSS_MA_SHORT', '5')),
+    'DEATH_CROSS_MA_LONG': int(os.environ.get('DEATH_CROSS_MA_LONG', '20')),
+    # 看涨信号周期
+    'BULLISH_PERIODS': _parse_list_env('BULLISH_PERIODS', [5, 10, 20, 60]),
+    # 数据范围参数
+    'DEFAULT_LOOKBACK_DAYS': int(os.environ.get('DEFAULT_LOOKBACK_DAYS', '500')),
+    'MAX_DATE_RANGE_DAYS': int(os.environ.get('MAX_DATE_RANGE_DAYS', '366'))
+}
+
