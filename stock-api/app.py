@@ -4,7 +4,7 @@ from fastapi.responses import JSONResponse
 from get.astock_base import get_astock_index, get_usstock_index, get_cnstock_funds_flow, get_cnstock_trade_summary,cn_stock_bk_fund_flow
 from util.ToolsUtil import ToolsUtil
 from util.RedisUtil import RedisUtil
-from api import news_driver, stock_recommend, prompt_memory, stock_real
+from api import news_driver, stock_recommend, prompt_memory, stock_real, stock_history
 from conf.Config import FIELDS_FUNDS_FLOW_MAP
 from data.data_format import prompt_stock_format
 from datetime import datetime
@@ -30,6 +30,7 @@ app.include_router(prompt_memory.router)
 app.include_router(news_driver.router)
 app.include_router(stock_recommend.router)
 app.include_router(stock_real.router)
+app.include_router(stock_history.router)
 
 # 定义 API 路由
 @app.get("/get_stock_summary")
