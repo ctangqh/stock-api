@@ -259,6 +259,25 @@ class StockCnHistoryMarketORM:
         finally:
             session.close()
 
+    def get_by_trade_date(self, trade_date: date) -> List[Dict]:
+        """
+        按交易日期查询所有股票
+        :param trade_date: 交易日期
+        :return: 记录列表
+        """
+        session = self.Session()
+        try:
+            query = session.query(StockCnHistoryMarket).filter(
+                StockCnHistoryMarket.trade_date == trade_date
+            )
+            records = query.all()
+            return [self._record_to_dict(r) for r in records]
+        except Exception as e:
+            logger.error(f"查询记录失败: {e}")
+            return []
+        finally:
+            session.close()
+
     def _record_to_dict(self, record) -> Dict:
         """
         将记录对象转换为字典
