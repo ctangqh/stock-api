@@ -254,8 +254,8 @@ if __name__ == "__main__":
     data = {
         'name': '中等风险',
         'value': {
-            'min_change_rate': 3.0,
-            'max_change_rate': 6.0,
+            'min_change_percent': 3.0,
+            'max_change_percent': 6.0,
             'min_market_cap': 50,
             'max_market_cap': 800,
             'check_ma20': True,

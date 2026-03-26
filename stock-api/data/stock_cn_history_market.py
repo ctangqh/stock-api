@@ -12,31 +12,31 @@ Base = declarative_base()
 class StockCnHistoryMarket(Base):
     __tablename__ = 'stock_cn_history_market'
 
-    id = Column(Integer, primary_key=True)
-    code = Column(String(20), nullable=False, index=True)
-    name = Column(String(100), nullable=True)
-    trade_date = Column(Date, nullable=False, index=True)
-    open = Column(Numeric(10, 2), nullable=True)
-    high = Column(Numeric(10, 2), nullable=True)
-    low = Column(Numeric(10, 2), nullable=True)
-    close = Column(Numeric(10, 2), nullable=False)
-    volume = Column(BigInteger, nullable=True)
-    amount = Column(Numeric(20, 2), nullable=True)
-    turnover = Column(Numeric(8, 2), nullable=True)
-    amplitude = Column(Numeric(8, 2), nullable=True)
-    change_rate = Column(Numeric(8, 2), nullable=True)
+    sync_date = Column(Date, primary_key=True)
+    sync_time = Column(DateTime, nullable=True)
+    data_date = Column(Date, nullable=False, index=True)
+    stock_code = Column(String(20), nullable=False, index=True)
+    stock_name = Column(String(100), nullable=True)
+    current_price = Column(Numeric(10, 2), nullable=True)
+    change_percent = Column(Numeric(8, 2), nullable=True)
     change_amount = Column(Numeric(20, 2), nullable=True)
-    ma5 = Column(Numeric(10, 2), nullable=True)
-    ma10 = Column(Numeric(10, 2), nullable=True)
-    ma20 = Column(Numeric(10, 2), nullable=True)
-    ma60 = Column(Numeric(10, 2), nullable=True)
-    macd_dif = Column(Numeric(10, 2), nullable=True)
-    macd_dea = Column(Numeric(10, 2), nullable=True)
-    macd_hist = Column(Numeric(10, 2), nullable=True)
+    amplitude = Column(Numeric(8, 2), nullable=True)
+    high_price = Column(Numeric(10, 2), nullable=True)
+    low_price = Column(Numeric(10, 2), nullable=True)
+    open_price = Column(Numeric(10, 2), nullable=True)
+    pre_close = Column(Numeric(10, 2), nullable=True)
+    volume = Column(BigInteger, nullable=True)
+    turnover = Column(Numeric(20, 2), nullable=True)
+    pe_ratio = Column(Numeric(10, 2), nullable=True)
+    pb_ratio = Column(Numeric(10, 2), nullable=True)
+    market_value = Column(Numeric(20, 2), nullable=True)
+    circulating_market_value = Column(Numeric(20, 2), nullable=True)
+    turnover_rate = Column(Numeric(8, 2), nullable=True)
+    volume_ratio = Column(Numeric(8, 2), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     __table_args__ = (
-        UniqueConstraint('code', 'trade_date', name='_code_trade_date_uc'),
+        UniqueConstraint('stock_code', 'data_date', name='_stock_code_data_date_uc'),
     )
 
 
@@ -77,7 +77,7 @@ class StockCnHistoryMarketORM:
     def batch_insert(self, data_list: List[Dict]) -> List[Optional[int]]:
         """
         批量插入或更新记录
-        基于code和trade_date判断冲突，冲突则更新，否则插入新记录
+        基于stock_code和data_date判断冲突，冲突则更新，否则插入新记录
         :param data_list: 记录数据字典列表
         :return: 处理后的记录ID列表
         """
@@ -88,21 +88,21 @@ class StockCnHistoryMarketORM:
             result_ids = []
             for data in data_list:
                 existing = session.query(StockCnHistoryMarket).filter(
-                    StockCnHistoryMarket.code == data['code'],
-                    StockCnHistoryMarket.trade_date == data['trade_date']
+                    StockCnHistoryMarket.stock_code == data['stock_code'],
+                    StockCnHistoryMarket.data_date == data['data_date']
                 ).first()
 
                 if existing:
-                    logger.info(f"更新现有记录，code: {data['code']}, trade_date: {data['trade_date']}")
+                    logger.info(f"更新现有记录，stock_code: {data['stock_code']}, data_date: {data['data_date']}")
                     for key, value in data.items():
                         setattr(existing, key, value)
-                    result_ids.append(existing.id)
+                    result_ids.append(existing.sync_date)
                 else:
-                    logger.info(f"插入新记录，code: {data['code']}, trade_date: {data['trade_date']}")
+                    logger.info(f"插入新记录，stock_code: {data['stock_code']}, data_date: {data['data_date']}")
                     new_record = StockCnHistoryMarket(**data)
                     session.add(new_record)
                     session.flush()
-                    result_ids.append(new_record.id)
+                    result_ids.append(new_record.sync_date)
 
             session.commit()
             logger.info(f"批量插入股票历史行情完成，成功 {len([id for id in result_ids if id is not None])} 条")
@@ -178,7 +178,7 @@ class StockCnHistoryMarketORM:
         finally:
             session.close()
 
-    def get_by_id(self, id: int) -> Optional[Dict]:
+    def get_by_id(self, id: date) -> Optional[Dict]:
         """
         根据ID获取记录
         :param id: 记录ID
@@ -186,7 +186,7 @@ class StockCnHistoryMarketORM:
         """
         session = self.Session()
         try:
-            record = session.query(StockCnHistoryMarket).filter(StockCnHistoryMarket.id == id).first()
+            record = session.query(StockCnHistoryMarket).filter(StockCnHistoryMarket.sync_date == id).first()
             if record:
                 return self._record_to_dict(record)
             return None
@@ -205,8 +205,8 @@ class StockCnHistoryMarketORM:
         """
         session = self.Session()
         try:
-            query = session.query(StockCnHistoryMarket).filter(StockCnHistoryMarket.code == code)
-            query = query.order_by(StockCnHistoryMarket.trade_date.desc())
+            query = session.query(StockCnHistoryMarket).filter(StockCnHistoryMarket.stock_code == code)
+            query = query.order_by(StockCnHistoryMarket.data_date.desc())
             if limit:
                 query = query.limit(limit)
             records = query.all()
@@ -228,11 +228,11 @@ class StockCnHistoryMarketORM:
         session = self.Session()
         try:
             query = session.query(StockCnHistoryMarket).filter(
-                StockCnHistoryMarket.code == code,
-                StockCnHistoryMarket.trade_date >= start_date,
-                StockCnHistoryMarket.trade_date <= end_date
+                StockCnHistoryMarket.stock_code == code,
+                StockCnHistoryMarket.data_date >= start_date,
+                StockCnHistoryMarket.data_date <= end_date
             )
-            query = query.order_by(StockCnHistoryMarket.trade_date)
+            query = query.order_by(StockCnHistoryMarket.data_date)
             records = query.all()
             return [self._record_to_dict(r) for r in records]
         except Exception as e:
@@ -259,24 +259,99 @@ class StockCnHistoryMarketORM:
         finally:
             session.close()
 
-    def get_by_trade_date(self, trade_date: date) -> List[Dict]:
+    def get_by_data_date(self, data_date: date) -> List[Dict]:
         """
         按交易日期查询所有股票
-        :param trade_date: 交易日期
+        :param data_date: 交易日期
         :return: 记录列表
         """
         session = self.Session()
         try:
-            query = session.query(StockCnHistoryMarket).filter(
-                StockCnHistoryMarket.trade_date == trade_date
-            )
-            records = query.all()
-            return [self._record_to_dict(r) for r in records]
+            # 使用原生SQL查询绕过主键问题（因为sync_date是主键，同一日期的多条记录会被合并）
+            from sqlalchemy import text
+            sql = text("""
+                SELECT 
+                    sync_date, sync_time, data_date, stock_code, stock_name,
+                    current_price, change_percent, change_amount, amplitude,
+                    high_price, low_price, open_price, pre_close, volume, turnover,
+                    pe_ratio, pb_ratio, market_value, circulating_market_value,
+                    turnover_rate, volume_ratio, created_at
+                FROM stock_cn_history_market 
+                WHERE data_date = :date
+            """)
+            result = session.execute(sql, {'date': data_date})
+            
+            records = []
+            for row in result:
+                # 构造字典
+                record_dict = {
+                    'sync_date': row[0],
+                    'sync_time': row[1],
+                    'data_date': row[2],
+                    'stock_code': row[3],
+                    'stock_name': row[4],
+                    'current_price': row[5],
+                    'change_percent': row[6],
+                    'change_amount': row[7],
+                    'amplitude': row[8],
+                    'high_price': row[9],
+                    'low_price': row[10],
+                    'open_price': row[11],
+                    'pre_close': row[12],
+                    'volume': row[13],
+                    'turnover': row[14],
+                    'pe_ratio': row[15],
+                    'pb_ratio': row[16],
+                    'market_value': row[17],
+                    'circulating_market_value': row[18],
+                    'turnover_rate': row[19],
+                    'volume_ratio': row[20],
+                    'created_at': row[21]
+                }
+                # 转换为与_record_to_dict相同的格式
+                records.append(self._row_to_dict(record_dict))
+            
+            return records
         except Exception as e:
             logger.error(f"查询记录失败: {e}")
+            import traceback
+            traceback.print_exc()
             return []
         finally:
             session.close()
+    
+    def _row_to_dict(self, row) -> Dict:
+        """
+        将原生SQL查询结果转换为字典
+        :param row: 原生SQL查询结果字典
+        :return: 格式化后的字典
+        """
+        return {
+            'id': row['sync_date'],
+            'code': row['stock_code'],
+            'name': row['stock_name'],
+            'data_date': row['data_date'],
+            'open': float(row['open_price']) if row['open_price'] is not None else None,
+            'high': float(row['high_price']) if row['high_price'] is not None else None,
+            'low': float(row['low_price']) if row['low_price'] is not None else None,
+            'close': float(row['current_price']) if row['current_price'] is not None else None,
+            'volume': row['volume'],
+            'amount': float(row['turnover']) if row['turnover'] is not None else None,
+            'turnover': float(row['turnover_rate']) if row['turnover_rate'] is not None else None,
+            'amplitude': float(row['amplitude']) if row['amplitude'] is not None else None,
+            'change_percent': float(row['change_percent']) if row['change_percent'] is not None else None,
+            'change_amount': float(row['change_amount']) if row['change_amount'] is not None else None,
+            'market_value': float(row['market_value']) if row['market_value'] is not None else None,
+            'circulating_market_value': float(row['circulating_market_value']) if row['circulating_market_value'] is not None else None,
+            'ma5': None,
+            'ma10': None,
+            'ma20': None,
+            'ma60': None,
+            'macd_dif': None,
+            'macd_dea': None,
+            'macd_hist': None,
+            'created_at': row['created_at']
+        }
 
     def _record_to_dict(self, record) -> Dict:
         """
@@ -285,27 +360,29 @@ class StockCnHistoryMarketORM:
         :return: 字典
         """
         return {
-            'id': record.id,
-            'code': record.code,
-            'name': record.name,
-            'trade_date': record.trade_date,
-            'open': float(record.open) if record.open else None,
-            'high': float(record.high) if record.high else None,
-            'low': float(record.low) if record.low else None,
-            'close': float(record.close) if record.close else None,
+            'id': record.sync_date,
+            'code': record.stock_code,
+            'name': record.stock_name,
+            'data_date': record.data_date,
+            'open': float(record.open_price) if record.open_price else None,
+            'high': float(record.high_price) if record.high_price else None,
+            'low': float(record.low_price) if record.low_price else None,
+            'close': float(record.current_price) if record.current_price else None,
             'volume': record.volume,
-            'amount': float(record.amount) if record.amount else None,
-            'turnover': float(record.turnover) if record.turnover else None,
+            'amount': float(record.turnover) if record.turnover else None,
+            'turnover': float(record.turnover_rate) if record.turnover_rate else None,
             'amplitude': float(record.amplitude) if record.amplitude else None,
-            'change_rate': float(record.change_rate) if record.change_rate else None,
+            'change_percent': float(record.change_percent) if record.change_percent else None,
             'change_amount': float(record.change_amount) if record.change_amount else None,
-            'ma5': float(record.ma5) if record.ma5 else None,
-            'ma10': float(record.ma10) if record.ma10 else None,
-            'ma20': float(record.ma20) if record.ma20 else None,
-            'ma60': float(record.ma60) if record.ma60 else None,
-            'macd_dif': float(record.macd_dif) if record.macd_dif else None,
-            'macd_dea': float(record.macd_dea) if record.macd_dea else None,
-            'macd_hist': float(record.macd_hist) if record.macd_hist else None,
+            'market_value': float(record.market_value) if record.market_value else None,
+            'circulating_market_value': float(record.circulating_market_value) if record.circulating_market_value else None,
+            'ma5': None,  # Not present in actual table
+            'ma10': None, # Not present in actual table
+            'ma20': None, # Not present in actual table
+            'ma60': None, # Not present in actual table
+            'macd_dif': None, # Not present in actual table
+            'macd_dea': None, # Not present in actual table
+            'macd_hist': None, # Not present in actual table
             'created_at': record.created_at
         }
 

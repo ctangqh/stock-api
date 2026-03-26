@@ -158,6 +158,17 @@ FIELDS_FUNDS_FLOW_MAP = {
     "f256": "今日融资融券净差额(亿元)" 
 }
 
+# 定时任务配置
+SCHEDULER_CONFIG = {
+    # 选股任务定时配置
+    'stock_scan': {
+        'enabled': os.environ.get('SCHEDULER_STOCK_SCAN_ENABLED', 'true').lower() == 'true',
+        # Cron 表达式: 分 时 日 月 周
+        # 每天晚上 8:30 执行: '30 20 * * *'
+        'cron': os.environ.get('SCHEDULER_STOCK_SCAN_CRON', '30 20 * * *')
+    }
+}
+
 # 技术指标配置
 def _parse_list_env(env_value, default):
     """解析逗号分隔的环境变量为列表"""
