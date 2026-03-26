@@ -180,6 +180,31 @@ class StockBestChooseORM:
         finally:
             session.close()
 
+    def get_recent_days(self, days: int = 3) -> List[Dict]:
+        """
+        查询最近几天的数据
+        :param days: 天数，默认 3 天
+        :return: 记录列表，按创建时间倒序排列
+        """
+        from datetime import date, timedelta
+        session = self.Session()
+        try:
+            end_date = date.today()
+            start_date = end_date - timedelta(days=days-1)
+            
+            query = session.query(StockBestChoose).filter(
+                StockBestChoose.scan_date >= start_date,
+                StockBestChoose.scan_date <= end_date
+            ).order_by(StockBestChoose.created_at.desc())
+            
+            records = query.all()
+            return [self._record_to_dict(r) for r in records]
+        except Exception as e:
+            logger.error(f"查询最近几天数据失败: {e}")
+            return []
+        finally:
+            session.close()
+
     def _record_to_dict(self, record) -> Dict:
         """
         将记录对象转换为字典

@@ -55,3 +55,49 @@ async def get_scan_results(
     except Exception as e:
         logger.exception(f"处理 get_scan_results 请求失败: {e}")
         raise HTTPException(status_code=500, detail="服务器内部错误")
+
+
+@router.get("/choose")
+async def get_stock_choose(
+    days: int = Query(3, ge=1, le=30, description="查询最近几天的数据，默认 3 天，最大 30 天")
+) -> List[Dict[str, Any]]:
+    """
+    获取近几天的选股结果，去重返回（重复股票保留最新的一条）
+    
+    参数:
+        days: 可选，查询最近几天的数据，默认 3 天，最大 30 天
+        
+    返回:
+        去重后的选股结果列表，包含 code, name, choose_reason
+    """
+    try:
+        logger.info(f"开始处理 get_stock_choose 请求，days={days}")
+        
+        # 验证 days 参数
+        if days > 30:
+            raise HTTPException(status_code=400, detail="days 参数不能超过 30")
+        
+        with StockBestChooseORM(DB_CONFIG) as orm:
+            records = orm.get_recent_days(days)
+        
+        # 去重逻辑：按 code 分组，保留最新的一条
+        stock_map = {}
+        for record in records:
+            code = record['code']
+            if code not in stock_map:
+                stock_map[code] = {
+                    'code': code,
+                    'name': record['name'],
+                    'scan_date': record['scan_date'].isoformat() if record['scan_date'] else None,
+                    'choose_reason': None
+                }
+        
+        result = list(stock_map.values())
+        logger.info(f"get_stock_choose 请求处理成功，返回 {len(result)} 条记录")
+        return result
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception(f"处理 get_stock_choose 请求失败: {e}")
+        raise HTTPException(status_code=500, detail="服务器内部错误")
