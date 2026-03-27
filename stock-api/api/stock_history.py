@@ -136,7 +136,7 @@ async def get_stock_indicators(
         # 准备返回数据
         result = {
             "code": code,
-            "dates": df['trade_date'].tolist(),
+            "dates": df['data_date'].tolist(),
             "ma5": ma5.tolist(),
             "ma10": ma10.tolist(),
             "ma20": ma20.tolist(),
@@ -212,7 +212,7 @@ async def get_stock_patterns(
         
         # 获取最新日期的状态
         latest_idx = len(df) - 1
-        latest_date = df['trade_date'].iloc[latest_idx]
+        latest_date = df['data_date'].iloc[latest_idx]
         
         latest_state = {
             "date": latest_date,
@@ -229,7 +229,7 @@ async def get_stock_patterns(
         # 准备返回数据
         result = {
             "code": code,
-            "dates": df['trade_date'].tolist(),
+            "dates": df['data_date'].tolist(),
             "golden_crosses": [df['trade_date'].iloc[i] for i in golden_crosses],
             "death_crosses": [df['trade_date'].iloc[i] for i in death_crosses],
             "bullish_arrangements": [df['trade_date'].iloc[i] for i in bullish_arrangements],
