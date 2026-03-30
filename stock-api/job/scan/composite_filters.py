@@ -5,6 +5,7 @@ import logging
 from .filter_change_percent import filter_change_percent
 from .filter_market_cap import filter_market_cap
 from .filter_ma import filter_ma, Operator
+from .filter_up import filter_up
 
 logger = logging.getLogger(__name__)
 
@@ -18,7 +19,6 @@ def apply_all_filters(
 ) -> List[Dict[str, Any]]:
     logger.info(f"开始应用所有筛选条件，日期: {scan_date}")
     
-    # 步骤1: 涨跌幅筛选
     change_percent_config = _extract_condition(strategy_config, 'change_percent')
     if change_percent_config:
         stocks = filter_change_percent(
@@ -31,7 +31,6 @@ def apply_all_filters(
         logger.info("涨跌幅筛选后无股票，提前结束")
         return []
     
-    # 步骤2: 市值筛选
     market_cap_config = _extract_condition(strategy_config, 'market_cap')
     if market_cap_config:
         stocks = filter_market_cap(
@@ -45,7 +44,18 @@ def apply_all_filters(
         logger.info("市值筛选后无股票，提前结束")
         return []
     
-    # 步骤3: 均线筛选
+    up_config = _extract_condition(strategy_config, 'continuous_up')
+    if up_config:
+        stocks = filter_up(
+            stocks,
+            consecutive_days=up_config.get('days', 3),
+            scan_date=scan_date
+        )
+    
+    if not stocks:
+        logger.info("连续上涨筛选后无股票，提前结束")
+        return []
+    
     ma_config = _extract_condition(strategy_config, 'ma')
     if ma_config:
         operator_str = ma_config.get('operator', '>=')
@@ -70,7 +80,6 @@ def _extract_condition(
         for cond in conditions:
             if cond.get('type') == condition_type:
                 return cond
-            # 递归查找嵌套条件
             nested = _extract_condition(cond, condition_type)
             if nested:
                 return nested
