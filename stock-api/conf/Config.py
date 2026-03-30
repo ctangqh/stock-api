@@ -164,8 +164,8 @@ SCHEDULER_CONFIG = {
     'stock_scan': {
         'enabled': os.environ.get('SCHEDULER_STOCK_SCAN_ENABLED', 'true').lower() == 'true',
         # Cron 表达式: 分 时 日 月 周
-        # 每天晚上 8:30 执行: '30 20 * * *'
-        'cron': os.environ.get('SCHEDULER_STOCK_SCAN_CRON', '30 20 * * *')
+        # 周一到周五晚上 8:00 执行: '0 20 * * 1-5'
+        'cron': os.environ.get('SCHEDULER_STOCK_SCAN_CRON', '0 20 * * 1-5')
     }
 }
 

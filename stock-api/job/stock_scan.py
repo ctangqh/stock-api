@@ -1,12 +1,13 @@
 from data.stock_choose_strategy import StockChooseStrategyORM
 from data.stock_best_choose import StockBestChooseORM
 from data.stock_cn_history_market import StockCnHistoryMarketORM
+from data.stock_cn_info import StockCnInfoORM
 from conf.Config import DB_CONFIG
 from datetime import date
 import logging
-from typing import Optional
+from typing import Optional, List, Dict, Any
 
-from strategy import StockSelector
+from job.scan import apply_all_filters
 from util.StockUtil import fetch_stock_indicators
 
 logging.basicConfig(level=logging.INFO)
@@ -22,6 +23,7 @@ def screen_stocks(scan_date: Optional[date] = None):
     strategy_orm = StockChooseStrategyORM(DB_CONFIG)
     best_choose_orm = StockBestChooseORM(DB_CONFIG)
     market_orm = StockCnHistoryMarketORM(DB_CONFIG)
+    info_orm = StockCnInfoORM(DB_CONFIG)
     
     try:
         strategies = strategy_orm.get_all_active()
@@ -34,8 +36,14 @@ def screen_stocks(scan_date: Optional[date] = None):
             strategy_value = strategy['value']
             logger.info(f"使用策略: {strategy_name}")
             
-            selector = StockSelector(strategy_value)
-            selected_stocks = selector.select(scan_date)
+            selected_stocks = _screen_with_strategy(
+                strategy_value,
+                scan_date,
+                market_orm,
+                info_orm
+            )
+            
+            logger.info(f"策略 '{strategy_name}' 选出 {len(selected_stocks)} 只股票")
             
             if not selected_stocks:
                 logger.info("未筛选出符合条件的股票")
@@ -60,7 +68,43 @@ def screen_stocks(scan_date: Optional[date] = None):
         strategy_orm.close()
         best_choose_orm.close()
         market_orm.close()
+        info_orm.close()
         logger.info("股票筛选结束")
+
+
+def _screen_with_strategy(
+    strategy_config: Dict[str, Any],
+    scan_date: date,
+    market_orm: StockCnHistoryMarketORM,
+    info_orm: StockCnInfoORM
+) -> List[Dict[str, Any]]:
+    stocks = market_orm.get_by_data_date(scan_date)
+    logger.info(f"从数据库获取到 {len(stocks)} 只股票")
+    
+    if not stocks:
+        return []
+    
+    stock_codes = [s['code'] for s in stocks]
+    
+    stock_info_map = info_orm.batch_get_by_codes(stock_codes)
+    stock_market_caps = {
+        code: info.get('market_cap', 0)
+        for code, info in stock_info_map.items()
+    }
+    
+    stock_indicators, stock_latest_indicator = fetch_stock_indicators(
+        stocks, scan_date, days_back=60
+    )
+    
+    selected_stocks = apply_all_filters(
+        stocks,
+        stock_market_caps,
+        stock_latest_indicator,
+        strategy_config,
+        scan_date
+    )
+    
+    return selected_stocks
 
 
 def save_results(filtered, strategy_name, strategy_value, scan_date, 
