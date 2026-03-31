@@ -4,21 +4,12 @@
 """
 from typing import Dict, Any, Optional
 from datetime import date
-from enum import Enum
 import logging
 
 from .base import Condition
+from .operator import Operator, compare_values
 
 logger = logging.getLogger(__name__)
-
-
-class Operator(Enum):
-    """比较操作符枚举"""
-    GREATER_THAN = ">"
-    GREATER_OR_EQUAL = ">="
-    LESS_THAN = "<"
-    LESS_OR_EQUAL = "<="
-    EQUAL = "=="
 
 
 class MACondition(Condition):
@@ -72,25 +63,11 @@ class MACondition(Condition):
                     return False
             
             # 执行比较
-            return self._compare(ma_value, self.operator, compare_value)
+            return compare_values(ma_value, self.operator, compare_value)
             
         except Exception as e:
             logger.error(f"评估 {stock_code} 的均线条件失败: {e}")
             return False
-    
-    def _compare(self, value1: float, operator: Operator, value2: float) -> bool:
-        """执行数值比较"""
-        if operator == Operator.GREATER_THAN:
-            return value1 > value2
-        elif operator == Operator.GREATER_OR_EQUAL:
-            return value1 >= value2
-        elif operator == Operator.LESS_THAN:
-            return value1 < value2
-        elif operator == Operator.LESS_OR_EQUAL:
-            return value1 <= value2
-        elif operator == Operator.EQUAL:
-            return abs(value1 - value2) < 0.001  # 浮点数比较允许小误差
-        return False
     
     def to_dict(self) -> Dict[str, Any]:
         """转换为字典格式"""

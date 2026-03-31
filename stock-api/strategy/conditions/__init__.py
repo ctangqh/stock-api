@@ -3,7 +3,8 @@
 包含所有选股条件的实现
 """
 from .base import Condition
-from .ma import MACondition, Operator
+from .operator import Operator, compare_values
+from .ma import MACondition
 from .market_cap import MarketCapCondition
 from .change_percent import ChangePercentCondition
 from .continuous_rise import ContinuousRiseCondition
@@ -11,8 +12,9 @@ from .composite import AndCompositeCondition, OrCompositeCondition
 
 __all__ = [
     'Condition',
-    'MACondition',
     'Operator',
+    'compare_values',
+    'MACondition',
     'MarketCapCondition',
     'ChangePercentCondition',
     'ContinuousRiseCondition',

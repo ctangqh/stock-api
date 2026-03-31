@@ -7,7 +7,7 @@ from .filter_market_cap import filter_market_cap
 from .filter_ma import filter_ma, Operator
 from .filter_up import filter_up
 from .composite_filters import apply_all_filters
-from .scan_job import ScanJob, get_scan_job, run_scan_job
+from .run import ScanJob, get_scan_job, run_scan_job
 
 __all__ = [
     'filter_change_percent',
